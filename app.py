@@ -50,7 +50,7 @@ def resize_for_display(pil_img, max_w=MAX_DISPLAY_W, max_h=MAX_DISPLAY_H):
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("Detect + Blur & Save name (logo)")
+        root.title("Yolo11_detect_lammo_bien_so")
         root.geometry(f"{MAX_DISPLAY_W+40}x{MAX_DISPLAY_H+160}")
 
         # load model
@@ -91,6 +91,72 @@ class App:
         except Exception as e:
             messagebox.showerror("Lỗi", f"Lỗi xử lý ảnh:\n{e}")
 
+    # def process_image(self, file_path):
+    #     img_arr = np.fromfile(file_path, dtype=np.uint8)
+    #     img_bgr = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
+    #     if img_bgr is None:
+    #         raise ValueError("Không đọc được ảnh. Kiểm tra đường dẫn/định dạng.")
+    #     orig_h, orig_w = img_bgr.shape[:2]
+
+    #     results = self.model.predict(source=file_path, conf=0.5, iou=IOU_THRESH, save=False)
+    #     r = results[0]
+
+    #     boxes = []
+    #     classes = []
+    #     confs = []
+    #     if hasattr(r, "boxes") and len(r.boxes) > 0:
+    #         xyxy = r.boxes.xyxy.cpu().numpy()
+    #         cls_arr = r.boxes.cls.cpu().numpy().astype(int)
+    #         conf_arr = r.boxes.conf.cpu().numpy()
+    #         for b, c, cf in zip(xyxy, cls_arr, conf_arr):
+    #             boxes.append(b.tolist())
+    #             classes.append(int(c))
+    #             confs.append(float(cf))
+
+    #     if len(boxes) == 0:
+    #         self.info_label.config(text="Không phát hiện đối tượng nào")
+    #         pil = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
+    #         disp = resize_for_display(pil)
+    #         self.last_result_pil = pil
+    #         self.last_logo_name = "Unknown"
+    #         self.show_image(disp)
+    #         return
+
+    #     best_logo_idx = None
+    #     best_conf = -1.0
+    #     for i, cls in enumerate(classes):
+    #         if cls in LOGO_CLASS_INDICES and confs[i] > best_conf:
+    #             best_conf = confs[i]
+    #             best_logo_idx = i
+
+    #     if best_logo_idx is not None:
+    #         best_logo_name = CLASS_NAMES[classes[best_logo_idx]]
+    #         best_conf_text = f"{best_logo_name} ({best_conf*100:.1f}%)"
+    #     else:
+    #         best_logo_name = "Unknown"
+    #         best_conf_text = "Không tìm thấy logo"
+
+    #     img_proc = img_bgr.copy()
+    #     for (b, cls, cf) in zip(boxes, classes, confs):
+    #         x1, y1, x2, y2 = map(int, b)
+    #         if cls in LOGO_CLASS_INDICES:
+    #             img_proc = gaussian_blur_region(img_proc, x1, y1, x2, y2, k_ratio=0.18)
+    #         elif cls == BIENSO_INDEX:
+    #             img_proc[y1:y2, x1:x2] = (0, 0, 0)
+
+    #         label_text = f"{CLASS_NAMES[cls]} {cf*100:.1f}%"
+    #         cv2.rectangle(img_proc, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    #         cv2.putText(img_proc, label_text, (x1, y1 - 5),
+    #                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+    #     pil_out = Image.fromarray(cv2.cvtColor(img_proc, cv2.COLOR_BGR2RGB))
+    #     self.last_result_pil = pil_out
+    #     self.last_logo_name = best_logo_name
+    #     self.last_image_path = file_path
+
+    #     disp = resize_for_display(pil_out)
+    #     self.show_image(disp)
+    #     self.info_label.config(text=f"Logo tốt nhất: {best_conf_text}")
     def process_image(self, file_path):
         img_arr = np.fromfile(file_path, dtype=np.uint8)
         img_bgr = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
@@ -98,12 +164,10 @@ class App:
             raise ValueError("Không đọc được ảnh. Kiểm tra đường dẫn/định dạng.")
         orig_h, orig_w = img_bgr.shape[:2]
 
-        results = self.model.predict(source=file_path, conf=CONF_THRESH, iou=IOU_THRESH, save=False)
+        results = self.model.predict(source=file_path, conf=0.5, iou=IOU_THRESH, save=False)
         r = results[0]
 
-        boxes = []
-        classes = []
-        confs = []
+        boxes, classes, confs = [], [], []
         if hasattr(r, "boxes") and len(r.boxes) > 0:
             xyxy = r.boxes.xyxy.cpu().numpy()
             cls_arr = r.boxes.cls.cpu().numpy().astype(int)
@@ -122,6 +186,7 @@ class App:
             self.show_image(disp)
             return
 
+        # chọn logo tốt nhất
         best_logo_idx = None
         best_conf = -1.0
         for i, cls in enumerate(classes):
@@ -136,25 +201,35 @@ class App:
             best_logo_name = "Unknown"
             best_conf_text = "Không tìm thấy logo"
 
-        img_proc = img_bgr.copy()
+        # hai bản ảnh tách biệt
+        img_clean = img_bgr.copy()       
+        img_for_display = img_bgr.copy() 
+
         for (b, cls, cf) in zip(boxes, classes, confs):
             x1, y1, x2, y2 = map(int, b)
+
             if cls in LOGO_CLASS_INDICES:
-                img_proc = gaussian_blur_region(img_proc, x1, y1, x2, y2, k_ratio=0.18)
+                img_clean = gaussian_blur_region(img_clean, x1, y1, x2, y2, k_ratio=0.18)
+                img_for_display = gaussian_blur_region(img_for_display, x1, y1, x2, y2, k_ratio=0.18)
             elif cls == BIENSO_INDEX:
-                img_proc[y1:y2, x1:x2] = (0, 0, 0)
+                img_clean[y1:y2, x1:x2] = (0, 0, 0)
+                img_for_display[y1:y2, x1:x2] = (0, 0, 0)
 
             label_text = f"{CLASS_NAMES[cls]} {cf*100:.1f}%"
-            cv2.rectangle(img_proc, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(img_proc, label_text, (x1, y1 - 5),
+            cv2.rectangle(img_for_display, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(img_for_display, label_text, (x1, y1 - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-        pil_out = Image.fromarray(cv2.cvtColor(img_proc, cv2.COLOR_BGR2RGB))
-        self.last_result_pil = pil_out
+        # chuyển sang PIL
+        pil_display = Image.fromarray(cv2.cvtColor(img_for_display, cv2.COLOR_BGR2RGB))
+        pil_clean = Image.fromarray(cv2.cvtColor(img_clean, cv2.COLOR_BGR2RGB))
+
+        # lưu lại kết quả
+        self.last_result_pil = pil_clean       # Ảnh để lưu (không khung)
         self.last_logo_name = best_logo_name
         self.last_image_path = file_path
 
-        disp = resize_for_display(pil_out)
+        disp = resize_for_display(pil_display) # ảnh hiển thị có khung
         self.show_image(disp)
         self.info_label.config(text=f"Logo tốt nhất: {best_conf_text}")
 
