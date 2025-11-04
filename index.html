@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yolo11 - Web App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        #controls {
+            margin-bottom: 1.5rem;
+        }
+        /* Tùy chỉnh nút input file */
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        .file-label:hover {
+            background-color: #0056b3;
+        }
+        #filename {
+            margin-left: 10px;
+            font-style: italic;
+            color: #555;
+        }
+        
+        #results {
+            margin-top: 1.5rem;
+            display: none; 
+        }
+        #info-label {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 1rem;
+        }
+        #image-display {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        .button-group {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .save-button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            text-decoration: none; /* Cho thẻ <a> */
+            transition: background-color 0.3s;
+        }
+        .save-button:hover {
+            background-color: #218838;
+        }
+
+        /* Loading Spinner */
+        #loader {
+            display: none; /* Ẩn ban đầu */
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Xử lý Logo & Làm mờ Biển số</h1>
+        
+        <div id="controls">
+            <!-- Nút input file được tùy chỉnh -->
+            <label for="file-input" class="file-label">Chọn ảnh</label>
+            <input id="file-input" type="file" accept="image/jpeg, image/png, image/bmp" onchange="fileSelected()">
+            <span id="filename">Chưa chọn file nào</span>
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="loader"></div>
+
+        <!-- Khu vực kết quả -->
+        <div id="results">
+            <h3 id="info-label"></h3>
+            <img id="image-display" src="" alt="Ảnh đã xử lý" />
+            
+            <div class="button-group">
+                <!-- Nút này sẽ được tạo bằng JS -->
+                <a id="save-image-btn" class="save-button" href="#" download="result.jpg">Lưu ảnh</a>
+                <a id="save-text-btn" class="save-button" href="#" download="logo.txt">Lưu tên logo (TXT)</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // URL của API (chạy local)=
+        const API_URL = 'http://127.0.0.1:8000/process-image/';
+
+        const fileInput = document.getElementById('file-input');
+        const filenameLabel = document.getElementById('filename');
+        const resultsDiv = document.getElementById('results');
+        const infoLabel = document.getElementById('info-label');
+        const imageDisplay = document.getElementById('image-display');
+        const saveImageBtn = document.getElementById('save-image-btn');
+        const saveTextBtn = document.getElementById('save-text-btn');
+        const loader = document.getElementById('loader');
+
+        let currentLogoName = 'Unknown'; // Lưu tên logo để tạo file txt
+
+        function fileSelected() {
+            const file = fileInput.files[0];
+            if (file) {
+                filenameLabel.textContent = file.name;
+                // Hiển thị loading và ẩn kết quả cũ
+                loader.style.display = 'block';
+                resultsDiv.style.display = 'none';
+                
+                // Gửi ảnh đến API
+                uploadAndProcess(file);
+            }
+        }
+
+        async function uploadAndProcess(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                    // Không cần 'Content-Type', trình duyệt tự thêm
+                });
+
+                // Tắt loading
+                loader.style.display = 'none';
+
+                if (!response.ok) {
+                    // Nếu server trả về lỗi (4xx, 5xx)
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `Lỗi server: ${response.status}`);
+                }
+
+                // Nhận dữ liệu JSON từ API
+                const data = await response.json();
+                
+                // Cập nhật giao diện
+                updateResults(data);
+
+            } catch (error) {
+                loader.style.display = 'none';
+                infoLabel.textContent = `Lỗi: ${error.message}`;
+                resultsDiv.style.display = 'block';
+                imageDisplay.src = ''; // Xóa ảnh cũ
+            }
+        }
+
+        function updateResults(data) {
+            // data = { filename, logo_name, confidence_text, processed_image_base64 }
+
+            // 1. Cập nhật tên logo
+            currentLogoName = data.logo_name || 'Unknown';
+            infoLabel.textContent = data.confidence_text || 'Không có thông tin';
+
+            // 2. Hiển thị ảnh (dùng Base64)
+            const imageBase64 = `data:image/jpeg;base64,${data.processed_image_base64}`;
+            imageDisplay.src = imageBase64;
+
+            // 3. Cập nhật nút "Lưu ảnh"
+            // Lấy tên file gốc, thay đuôi
+            const baseFilename = data.filename.split('.').slice(0, -1).join('.') || 'result';
+            const imageFilename = `${baseFilename}_processed.jpg`;
+            
+            saveImageBtn.href = imageBase64;
+            saveImageBtn.download = imageFilename;
+
+            // 4. Cập nhật nút "Lưu TXT"
+            const textFilename = `${baseFilename}_logo.txt`;
+            // Tạo link "data URL" cho file text
+            const textData = `data:text/plain;charset=utf-8,${encodeURIComponent(currentLogoName)}`;
+            saveTextBtn.href = textData;
+            saveTextBtn.download = textFilename;
+
+            // 5. Hiển thị khu vực kết quả
+            resultsDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

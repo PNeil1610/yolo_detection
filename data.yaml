@@ -1,0 +1,18 @@
+train: F:/Learning/Project_detection/dataset_split/train/images
+val: F:/Learning/Project_detection/dataset_split/val/images
+test: F:/Learning/Project_detection/dataset_split/test/images
+
+nc: 10
+names:
+  [
+    "bmw",
+    "mercedes",
+    "vinfast",
+    "toyota",
+    "mitsubishi",
+    "ford",
+    "honda",
+    "hyundai",
+    "kia",
+    "bien_so",
+  ]
