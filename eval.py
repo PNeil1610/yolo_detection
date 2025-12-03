@@ -158,3 +158,117 @@ print(f"F1-score (Weighted):   {f1_weighted:.4f}")
 print("\n===== Classification Report =====")
 print(classification_report(y_true_filtered, y_pred_filtered, target_names=CLASSES, zero_division=0))
 
+# import os
+# import torch
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from ultralytics import YOLO
+# from sklearn.metrics import confusion_matrix
+# import seaborn as sns
+
+
+# MODEL_PATH = "F:/learning/Project_detection/runs/detect/train/weights/best.pt"
+# TEST_IMAGES = "F:/learning/Project_detection/dataset_split/test/images"
+# TEST_LABELS = "F:/learning/Project_detection/dataset_split/test/labels"
+
+# CLASSES = [
+#     "bmw", "mercedes", "vinfast", "toyota", "mitsubishi",
+#     "ford", "honda", "hyundai", "kia", "bien_so"
+# ]
+
+# CLASSES_EXTENDED = CLASSES + ["background"]
+# BACKGROUND_ID = len(CLASSES)  # = 10
+
+# IOU_THRESHOLD = 0.5  
+
+# model = YOLO(MODEL_PATH)
+
+# y_true = []
+# y_pred = []
+
+
+# def compute_iou(box1, box2):
+#     xA = max(box1[0], box2[0])
+#     yA = max(box1[1], box2[1])
+#     xB = min(box1[2], box2[2])
+#     yB = min(box1[3], box2[3])
+
+#     interArea = max(0, xB - xA) * max(0, yB - yA)
+#     box1Area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+#     box2Area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+#     return interArea / float(box1Area + box2Area - interArea + 1e-6)
+
+
+# label_files = sorted(os.listdir(TEST_LABELS))
+
+# for label_file in label_files:
+#     label_path = os.path.join(TEST_LABELS, label_file)
+#     image_path = os.path.join(TEST_IMAGES, label_file.replace(".txt", ".jpg"))
+
+#     if not os.path.exists(image_path):
+#         image_path = image_path.replace(".jpg", ".png")
+#         if not os.path.exists(image_path):
+#             continue
+
+#     # Load GT
+#     gt_boxes = []
+#     with open(label_path, "r") as f:
+#         for line in f.readlines():
+#             c, x, y, w, h = map(float, line.split())
+#             gt_boxes.append((int(c), x, y, w, h))
+
+#     # Predict
+#     result = model.predict(source=image_path, conf=0.25, verbose=False)[0]
+#     pred_boxes = [(int(b.cls.item()), *b.xywhn.tolist()[0]) for b in result.boxes]
+
+#     matched_pred = set()
+
+#     # Match GT → Prediction
+#     for gt_class, gx, gy, gw, gh in gt_boxes:
+#         best_iou = 0
+#         best_pred = None
+
+#         for idx, (pc, px, py, pw, ph) in enumerate(pred_boxes):
+#             if idx in matched_pred:
+#                 continue
+
+#             iou = compute_iou((gx - gw/2, gy - gh/2, gx + gw/2, gy + gh/2),
+#                               (px - pw/2, py - ph/2, px + pw/2, py + ph/2))
+
+#             if iou > best_iou:
+#                 best_iou = iou
+#                 best_pred = (idx, pc)
+
+#         # MATCH hoặc MISS
+#         y_true.append(gt_class)
+
+#         if best_iou >= IOU_THRESHOLD:
+#             matched_pred.add(best_pred[0])
+#             y_pred.append(best_pred[1])  # đúng/misclass
+#         else:
+#             y_pred.append(BACKGROUND_ID)   # MISS → coi như đoán background
+
+#     # Prediction thừa (false positive) → y_true = background
+#     for idx, (pc, _, _, _, _) in enumerate(pred_boxes):
+#         if idx not in matched_pred:
+#             y_true.append(BACKGROUND_ID)  # background
+#             y_pred.append(pc)
+
+
+# # Tạo Confusion Matrix đầy đủ (bao gồm background)
+# cm = confusion_matrix(
+#     y_true,
+#     y_pred,
+#     labels=list(range(len(CLASSES_EXTENDED)))
+# )
+
+# plt.figure(figsize=(10, 8))
+# sns.heatmap(cm, annot=True, fmt='d',
+#             xticklabels=CLASSES_EXTENDED,
+#             yticklabels=CLASSES_EXTENDED,
+#             cmap='Blues')
+# plt.xlabel("Predicted")
+# plt.ylabel("True")
+# plt.title("Confusion Matrix")
+# plt.show()
+

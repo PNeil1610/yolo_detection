@@ -47,21 +47,8 @@ def gaussian_blur_region(img, x1, y1, x2, y2, k_ratio=0.12):
     img[y1:y2, x1:x2] = blurred
     return img
 
-# ↓↓↓ THAY ĐỔI Ở DÒNG DƯỚI ĐÂY (chỗ ->)
+
 def process_image_logic(model: YOLO, image_bytes: bytes) -> Tuple[Image.Image, str, str]:
-    """
-    Đây là hàm logic chính, được tách ra từ App.process_image
-    
-    Đầu vào:
-    - model: Đối tượng model YOLO đã được tải
-    - image_bytes: Dữ liệu (bytes) của ảnh gốc
-    
-    Đầu ra (đã sửa type hint):
-    - pil_clean (Image.Image): Ảnh PIL đã xử lý (làm mờ, che biển)
-    - best_logo_name (str): Tên logo tốt nhất ("Unknown" nếu không có)
-    - best_conf_text (str): Chuỗi thông tin (ví dụ: "bmw (95.1%)")
-    """
-    
     # 1. Đọc ảnh từ bytes (thay vì file_path)
     img_arr = np.frombuffer(image_bytes, dtype=np.uint8)
     img_bgr = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)
@@ -71,7 +58,7 @@ def process_image_logic(model: YOLO, image_bytes: bytes) -> Tuple[Image.Image, s
     orig_h, orig_w = img_bgr.shape[:2]
 
     # 2. Chạy model
-    # Quan trọng: model.predict() có thể nhận trực tiếp mảng numpy BGR
+    
     results = model.predict(source=img_bgr.copy(), conf=0.5, iou=IOU_THRESH, save=False)
     r = results[0]
 
